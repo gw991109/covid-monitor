@@ -1,9 +1,12 @@
-from flask import Flask, render_template, url_for, redirect, request
-# from flask_sqlalchemy import SQLAlchemy
-
+from flask import Flask, render_template, url_for, redirect, request, flash, session, send_file
+from flask_session import Session
 import os
 
 app = Flask(__name__)
+SESSION_TYPE = 'filesystem'
+app.config.from_object(__name__)
+Session(app)
+
 
 class WorldDailyReport:
 	province_state = None
@@ -114,6 +117,7 @@ class Country:
 
 @app.route('/')
 def home():
+	session['query_options'] = {'countries':[], 'provinces':[], 'combined_keys':[], 'date':['']}
 	return redirect(url_for("welcome_monitor"))
 
 @app.route('/monitor')
@@ -131,6 +135,39 @@ def upload():
 		print("file saved")
 		return redirect(request.url)
 	return render_template("upload.html")
+
+
+@app.route('/query', methods = ['POST', 'GET'])
+def query():
+	message = ''
+	if request.method == 'POST':
+		if request.form['btn'] == 'add_country' and request.form['country'] != '':
+			session['query_options']['countries'].append(request.form['country'])
+		elif request.form['btn'] == 'add_provinces' and request.form['provinces'] != '':
+			session['query_options']['provinces'].append(request.form['provinces']) 
+		elif request.form['btn'] == 'add_combined_key' and request.form['combined_key'] != '':
+			session['query_options']['combined_keys'].append(request.form['combined_key']) 
+		elif request.form['btn'] == 'reset':
+			session['query_options']['countries'] = []
+			session['query_options']['provinces'] = []
+			session['query_options']['combined_keys'] = []
+			session['query_options']['date'] = []
+		elif  request.form['btn'] == 'add_date':
+			if request.form['date'] != '' and request.form['start'] == '' and request.form['end']=='':
+				session['query_options']['date'] = [request.form['date']]
+			elif request.form['start'] != '' and request.form['end'] != '' and request.form['date'] == '':
+				session['query_options']['date'] = [request.form['start'], request.form['end']]
+			else:
+				session['query_options']['date'] = []
+				message = 'invalid date'
+
+	if len(session['query_options']['date']) == 1:
+		message = session['query_options']['date'][0]
+	elif len(session['query_options']['date']) == 2:
+		message = session['query_options']['date'][0] + ' to ' + session['query_options']['date'][1]
+	return render_template('query.html', countries=session['query_options']['countries'],
+	provinces=session['query_options']['provinces'], combined_keys=session['query_options']['combined_keys'],
+	date = message)
 
 
 if __name__ == "__main__":
