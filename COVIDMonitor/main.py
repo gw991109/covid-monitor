@@ -1,13 +1,18 @@
-from flask import Flask, render_template, url_for, redirect, request, flash, \
-    session, send_file
+from typing import Any
+from flask import Flask, render_template, url_for, redirect, request, session, \
+    send_file
 from flask_session import Session
 import csv
+import json
+import datetime
 import os
 
 app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
 Session(app)
+
+countries_dict = {}
 
 class Report:
     confirmed = None
@@ -51,6 +56,7 @@ class Report:
     def get_active(self):
         return self.active
 
+
 class Country:
     """
     A country class representing a country.
@@ -72,6 +78,12 @@ class Country:
 
     def add_report(self, date, report):
         self.reports[date] = report
+
+    def get_report(self, date, report):
+        """
+        Get a recovered/deaths/confirmed/active time series under this country
+        """
+        return self.reports
 
     def add_dated_report(self, date, category, num):
         """
@@ -166,15 +178,7 @@ class Province:
         if date in self.provincial_reports:
             return self.provincial_reports[date]
 
-class Date:
-    date = None
-    reports = {}
 
-    def __init__(self, date):
-        self.date = date
-
-    def add_report(self, country, report):
-        self.reports[country] = report
 
 def determine_file_type(path, filename):
     if ".csv" in filename:
@@ -194,7 +198,7 @@ def determine_file_type(path, filename):
             # check if it's a time series
             split = filename.split('_')
             if len(split) == 5:
-                return split[4] + split[5]
+                return split[3] + split[4]
     return "incorrect"
 
 def process_file(path, filename, session):
@@ -202,12 +206,15 @@ def process_file(path, filename, session):
     print(f"File type: {file_type}")
     if file_type == "incorrect":
         return False
+    session['file_type'] = file_type
     if file_type == "world":
         date = filename[:-4]
+        date = change_date_format(date)
         return process_daily_report_world(path, date, session)
 
     if file_type == "us":
         date = filename[:-4]
+        date = change_date_format(date)
         return process_daily_report_us(path, date, session)
 
     if file_type == "deathsglobal":
@@ -227,6 +234,7 @@ def process_file(path, filename, session):
         return True
     return False
 
+
 def process_global_timeseries(path, category, sess):
     try:
         with open(path, 'r') as csv_file:
@@ -238,7 +246,7 @@ def process_global_timeseries(path, category, sess):
                 country_region = line[1]
                 print(country_region)
                 # if country_region in sess["countries"]:
-                if country_region in countries_dict:
+                if country_region in sess["countries"]:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
                     if province_state != '' and province_state in country.province_state:
@@ -280,6 +288,16 @@ def process_global_timeseries(path, category, sess):
                         country.add_dated_report(date, category, num)
                     sess['countries'][country_region] = country
 
+        # for count in sess['countries']:
+        #     country = sess['countries'][count]
+        #     for prov in country.province_state:
+        #         print(f"Country {count} Province {prov}")
+        #         province = country.province_state[prov]
+        #         reports = province.get_reports()
+        #         for date in reports:
+        #             report = reports[date]
+        #             print(report.get_confirmed())
+
         return True
     except EnvironmentError:
         print("With statement failed")
@@ -291,10 +309,8 @@ def process_us_timeseries(path, category, sess):
         with open(path, 'r') as csv_file:
             csv_reader = csv.reader(csv_file)
             header = next(csv_reader)
-            if category == "deaths":
-                dates = header[12:]
-            else:
-                dates = header[11:]
+            # changed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! used to be header[12:]
+            dates = header[11:]
             for line in csv_reader:
                 province_state = line[6]
                 country_region = line[7]
@@ -340,11 +356,21 @@ def process_us_timeseries(path, category, sess):
                         num = line[index + 10]
                         country.add_dated_report(date, category, num)
                     sess['countries'][country_region] = country
+        # for count in sess['countries']:
+        #     country = sess['countries'][count]
+        #     print(count)
+        #     for prov in country.province_state:
+        #         province = country.province_state[prov]
+        #         reports = province.get_reports()
+        #         for date in reports:
+        #             report = reports[date]
+        #             print(report.get_confirmed())
+
+
         return True
     except EnvironmentError:
         print("With statement failed")
         return False
-
 
 def process_daily_report_world(path, date, sess):
     try:
@@ -363,39 +389,24 @@ def process_daily_report_world(path, date, sess):
                     country = sess["countries"][country_region]
                     if province_state != '' and province_state in country.province_state:
                         # Updating province numbers for given category
-                        country.add_province_dated_report(province_state, date,
-                                                          Report(confirmed,
-                                                                 deaths,
-                                                                 recovered,
-                                                                 active))
+                        country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
                     elif province_state != '':
                         # Adding province first then update numbers
                         country.add_province(province_state)
-                        country.add_province_dated_report(province_state, date,
-                                                          Report(confirmed,
-                                                                 deaths,
-                                                                 recovered,
-                                                                 active))
+                        country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
                     else:
                         # No province provided. Update country reports directly
-                        country.add_province_dated_report(province_state, date,
-                                                          Report(confirmed,
-                                                                 deaths,
-                                                                 recovered,
-                                                                 active))
+                        country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
                 elif province_state != '':
                     # New country with states
                     country = Country(country_region)
                     country.add_province(province_state)
-                    country.add_province_dated_report(province_state, date,
-                                                      Report(confirmed, deaths,
-                                                             recovered, active))
+                    country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
                     sess['countries'][country_region] = country
                 else:
                     # Add new country with no states
                     country = Country(country_region)
-                    country.add_report(date, Report(confirmed, deaths,
-                                                    recovered, active))
+                    country.add_report(date, Report(confirmed, deaths, recovered, active))
                     sess['countries'][country_region] = country
         return True
     except EnvironmentError:
@@ -415,69 +426,222 @@ def process_daily_report_us(path, date, sess):
                 deaths = line[6]
                 recovered = line[7]
                 active = line[8]
-                print(
-                    f"Province: {province_state}. Country: {country_region}. Confirmed: {confirmed}. Deaths: {deaths}. "
-                    f"Recovered: {recovered}. Active: {active}.")
+                print(f"Province: {province_state}. Country: {country_region}. Confirmed: {confirmed}. Deaths: {deaths}. "
+                      f"Recovered: {recovered}. Active: {active}.")
                 if country_region in sess["countries"]:
+                # if country_region in countries_dict:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
+                    # country = countries_dict[country_region]
                     if province_state != '' and province_state in country.province_state:
                         # Updating province numbers for given category
-                        country.add_province_dated_report(province_state, date,
-                                                          Report(confirmed,
-                                                                 deaths,
-                                                                 recovered,
-                                                                 active))
+                        # print("Country and province exists.")
+                        country.add_province_dated_report(province_state, date, Report(confirmed, deaths,
+                                                        recovered, active))
                     elif province_state != '':
                         # Adding province first then update numbers
+                        # print("Country exists province doesnt.")
                         country.add_province(province_state)
-                        country.add_province_dated_report(province_state, date,
-                                                          Report(confirmed,
-                                                                 deaths,
-                                                                 recovered,
-                                                                 active))
+                        # print(province)
+                        # province.add_report(date, report)
+                        country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
+                        # province_reports = province.get_reports()
+                        # print(province_reports[date])
+                        # print(province_reports[date].get_confirmed())
                     else:
                         # No province provided. Update country reports directly
-                        country.add_province_dated_report(province_state, date,
-                                                          Report(confirmed,
-                                                                 deaths,
-                                                                 recovered,
-                                                                 active))
+                        country.add_province_dated_report(province_state, date, Report(confirmed, deaths,
+                                                       recovered, active))
                 elif province_state != '':
                     # Add new country with states
                     country = Country(country_region)
                     country.add_province(province_state)
-                    country.add_province_dated_report(province_state, date,
-                                                      Report(confirmed, deaths,
-                                                             recovered, active))
+                    country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
                     sess['countries'][country_region] = country
                 else:
                     # Add new country with no states
                     country = Country(country_region)
                     country.add_report(date, Report(confirmed, deaths,
-                                                    recovered, active))
+                                                          recovered, active))
 
                     sess['countries'][country_region] = country
                     # countries_dict[country_region] = country
+                    print("INSERTED")
+
+        # country = sess['countries']['US']
+        # for province in country.province_state:
+        #     prov = country.province_state[province]
+        #     print(province)
+        #     print(hex(id(prov.provincial_reports)))
+        #     print(prov.get_dated_report(date))
+        #     print(prov.get_dated_report(date).get_confirmed())
+            # reports = country.get_province_reports(province)
+            # prov = country.get_province(province)
+            # reports2 = prov.get_report(date)
+            # reports3 = prov.reports[date]
+            # print(reports)
+            # print(reports['01-02-2021'])
+            # print(reports2)
+            # print(reports3)
+            # print(reports['01-02-2021'].get_confirmed())
+            # print(reports2.get_confirmed())
+            # print(reports3.get_confirmed())
+        # provinces = session["countries"]['US'].province_state
+        # for item in provinces:
+        #     print(item)
+        #     prov = provinces[item]
+        #     report = prov.get_reports()[date]
+        #     print(f"confirmed: {report.get_confirmed()}")
+        # return True
     except EnvironmentError:
         print("With statement failed")
         return False
 
 
+
+
+
+# return a dictionary base on the data and query
+def get_result(session):
+    # result = {(country, provinces):{date1: report1, date2:report2, ....}, ....}
+    result = {}
+    countries_query = session['query_options']['countries']
+    provinces_query = session['query_options']['provinces']
+    combined_keys_query = session['query_options']['combined_keys']
+    print(session['query_options'])
+    start_date = session['query_options']['date'][0]
+    if start_date == '':
+        start_date = datetime.date.min
+    else:
+        start_date  = get_date(start_date)
+    end_date = session['query_options']['date'][0]
+    if end_date == '':
+        end_date = datetime.date.max
+    else:
+        end_date = get_data(end_date)
+
+    for country_region in session['countries']:
+        curr_country = session['countries'][country_region]
+
+        # No provinces data
+        if len(curr_country.reports) != 0:
+            if (curr_country.country_region in countries_query or len(countries_query) ==0) and len(provinces_query) == 0 and (curr_country.country_region in combined_keys_query or len(combined_keys_query)==0):
+                for date in curr_country.reports:
+                    d = get_date(date)
+                    if start_date<=d<=end_date:
+                        curr_report = curr_country.reports[date]
+                        if (country_region,None) in result:
+                            result[(country_region,None)][date] = curr_report
+                        else:
+                            result[(country_region,None)] = {date: curr_report}
+        # provinces are not empty, reports in Provinces object
+        else:
+            for province in curr_country.province_state:
+                curr_combined_key = curr_country.country_region+', '+province
+                if (curr_country.country_region in countries_query or len(countries_query) ==0) and (province in provinces_query or len(provinces_query) == 0) and (curr_combined_key in combined_keys_query or len(combined_keys_query)==0):
+                    for date in curr_country.province_state[province].provincial_reports:
+                        d = get_date(date)
+                        if start_date<=d<=end_date:
+                            curr_report = curr_country.province_state[province].provincial_reports[date]
+                            if (country_region, province) in result:
+                                result[(country_region,province)][date] = curr_report
+                            else:
+                                result[(country_region,province)] = {date: curr_report}
+    return result
+
+def write_to_file(result, session, filepath):
+    field = session['query_options']['field']
+    print(session)
+    print(field)
+
+    with open(filepath, "w") as fo:
+        header = 'Country, Province, date, '+field+'\n'
+        json_data={}
+        json_data['reports']=[]
+        if session['download_type']!= 'json':
+            fo.write(header)
+        for location in result:
+            country = location[0]
+            province = location[1]
+            if province is None:
+                province = ''
+            for date in result[location]:
+                report = result[location][date]
+                data = ''
+                if field == 'deaths':
+                    data = report.deaths
+                elif field == 'confirmed':
+                    data = report.confirmed
+                elif field == 'active':
+                    data = report.active
+                elif field == 'recovered':
+                    data = report.recovered
+                if data is None:
+                    data = ''
+
+                json_data['reports'].append({
+                    'country': country,
+                    'province': province,
+                    'date': date,
+                    field: data
+                })
+                if session['download_type']!= 'json':
+                    curr_string = country+','+province+','+date+','+data+'\n'
+                    fo.write(curr_string)
+            if session['download_type']== 'json':
+                json.dump(json_data,fo)
+
+
+
+def change_date_format(date_string):
+    date_lst = date_string.split('-')
+    month = date_lst[0]
+    day = date_lst[1]
+    year = date_lst[2][-2:]
+
+    if month[0] == '0':
+        month = month[-1]
+    if day[0] =='0':
+        day = day[-1]
+    print(date_lst)
+    return month+'/'+day+'/'+year
+
+
+
+def get_date(date_string):
+    # date_string follow the formate mm/dd/yy
+    date_lst = date_string.split('/')
+    print(date_string)
+    print(date_lst)
+    month = int(date_lst[0])
+    day = int(date_lst[1])
+    year = int('20'+date_lst[2])
+
+    return datetime.date(year, month, day)
+
+
+uploads_dir = os.path.join(app.instance_path, 'uploads')
+os.makedirs(uploads_dir, exist_ok=True)
+
+
 @app.route('/')
 def home():
     session['query_options'] = {'countries': [], 'provinces': [],
-                                'combined_keys': [], 'date': ['']}
-    return redirect(url_for("welcome_monitor"))
+                                'combined_keys': [], 'date': ['',''], 'field': 'deaths'}
+    session['all_world_reports'] = {}
+    session['all_us_reports'] = {}
+    session['countries'] = {}
+    session['download_type'] = ''
+    session['download_file'] = ''
+    session['file_type'] = ''
+    session['report_type'] = ''
+    session['uploaded'] = False
+    return redirect(url_for("upload"))
 
 
 @app.route('/monitor')
 def welcome_monitor():
     return render_template("index.html")
-
-
-uploads_dir = os.path.join(app.instance_path, 'uploads')
-os.makedirs(uploads_dir, exist_ok=True)
 
 
 @app.route('/upload', methods=["GET", "POST"])
@@ -490,64 +654,96 @@ def upload():
             file.save(path)
             print(f"Path: {path}")
             print(f"File name: {file.filename}")
-            if process_file(path, file.filename, session):
-                print("file saved successfully.")
-                info = 'Successfully uploaded file!'
-            else:
-                info = 'File saving failed.'
+            process_file(path, file.filename, session)
+            print("file saved")
+            info = 'success'
+            session['uploaded'] = True
 
         except():
             print('error')
-            info = 'File saving failed.'
+            info = 'failure'
+            session['uploaded'] = False
 
     return render_template("upload.html", text=info)
 
 
-@app.route('/query', methods=['POST', 'GET'])
+@app.route('/query', methods = ['POST', 'GET'])
 def query():
-    message = ''
-    if request.method == 'POST':
-        if request.form['btn'] == 'add_country' and request.form[
-            'country'] != '':
-            session['query_options']['countries'].append(
-                request.form['country'])
-        elif request.form['btn'] == 'add_provinces' and request.form[
-            'provinces'] != '':
-            session['query_options']['provinces'].append(
-                request.form['provinces'])
-        elif request.form['btn'] == 'add_combined_key' and request.form[
-            'combined_key'] != '':
-            session['query_options']['combined_keys'].append(
-                request.form['combined_key'])
-        elif request.form['btn'] == 'reset':
-            session['query_options']['countries'] = []
-            session['query_options']['provinces'] = []
-            session['query_options']['combined_keys'] = []
-            session['query_options']['date'] = []
-        elif request.form['btn'] == 'add_date':
-            if request.form['date'] != '' and request.form['start'] == '' and \
-                    request.form['end'] == '':
-                session['query_options']['date'] = [request.form['date']]
-            elif request.form['start'] != '' and request.form['end'] != '' and \
-                    request.form['date'] == '':
-                session['query_options']['date'] = [request.form['start'],
-                                                    request.form['end']]
-            else:
-                session['query_options']['date'] = []
-                message = 'invalid date'
+	message = ''
+	if request.method == 'POST':
+		if request.form['btn'] == 'add_country' and request.form['country'] != '':
+			session['query_options']['countries'].append(request.form['country'])
+		elif request.form['btn'] == 'add_provinces' and request.form['provinces'] != '':
+			session['query_options']['provinces'].append(request.form['provinces'])
+		elif request.form['btn'] == 'add_combined_key' and request.form['combined_key'] != '':
+			session['query_options']['combined_keys'].append(request.form['combined_key'])
+		elif request.form['btn'] == 'reset':
+			session['query_options']['countries'] = []
+			session['query_options']['provinces'] = []
+			session['query_options']['combined_keys'] = []
+			session['query_options']['date'] = ['','']
+		elif  request.form['btn'] == 'add_date':
+			if request.form['date'] != '' and request.form['start'] == '' and request.form['end']=='':
+				date_string = request.form['date']
+				session['query_options']['date'] = [date_string,date_string]
+			elif request.form['start'] != '' and request.form['end'] != '' and request.form['date'] == '':
+				start_string = request.form['start']
+				end_string = request.form['end']
+				session['query_options']['date'] = [start_string, end_string]
+			else:
+				session['query_options']['date'] = ['','']
+				message = 'invalid date'
+        
 
-    if len(session['query_options']['date']) == 1:
-        message = session['query_options']['date'][0]
-    elif len(session['query_options']['date']) == 2:
-        message = session['query_options']['date'][0] + ' to ' + \
-                  session['query_options']['date'][1]
-    return render_template('query.html',
-                           countries=session['query_options']['countries'],
-                           provinces=session['query_options']['provinces'],
-                           combined_keys=session['query_options'][
-                               'combined_keys'],
-                           date=message)
+	if session['query_options']['date'][0] == session['query_options']['date'][1]:
+		message = session['query_options']['date'][0]
+	elif len(session['query_options']['date']) == 2:
+		message = session['query_options']['date'][0] + ' to ' + session['query_options']['date'][1]
+    
+	return render_template('query.html', countries=session['query_options']['countries'],
+	provinces=session['query_options']['provinces'], combined_keys=session['query_options']['combined_keys'],
+	date = message)
+
+
+
+@app.route('/data', methods=['POST', 'GET'])
+def data():
+    session['query_options']['field']=request.args.get('field')
+    return render_template('data.html')
+
+
+@app.route('/download_file')
+def download_file():
+    filename = 'result.'
+    p = './instance/downloads/'
+    vailid = True
+    session['download_type'] = request.args.get('file_type')
+    if session['download_type'] == 'json':
+        print("json")
+        filename = filename + 'json'
+    elif session['download_type'] == 'csv':
+        print('csv')
+        filename = filename + 'csv'
+    elif session['download_type'] == 'txt':
+        print('text')
+        filename = filename + 'txt'
+    else:
+        vailid = False
+        print("invalid file type")
+    if vailid:
+        print(session['query_options'])
+        result = get_result(session)
+
+        write_to_file(result, session, p+filename)
+        session['download_file'] = p+filename
+        print(p+filename)
+        try:
+            return send_file(session['download_file'], as_attachment=True)
+        except:
+            return "Error, file not found!"
+    return "Error, file not found!"
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug = True)
+

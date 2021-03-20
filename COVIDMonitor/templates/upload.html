@@ -1,5 +1,6 @@
 {% block main %}
 
+
 <div class="container">
   <div class="row">
     <div class="col">
@@ -11,14 +12,19 @@
 
         <div class="form-group">
           <label>Select file</label>
+          <label>{{text}}</label>
           <div class="custom-file">
             <input type="file" class="custom-file-input" name="file" id="file">
-            <label class="custom-file-label" for="file">Select file...</label>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary">Upload</button>
-
+      </form>
+      <form action="{{url_for('query')}}">
+        {% if session['uploaded'] %}
+        <input type = 'submit' name='btn' value='to_query'>
+        {% endif %}
+        
       </form>
 
     </div>
@@ -26,3 +32,6 @@
 </div>
 
 {% endblock %}
+
+
+
