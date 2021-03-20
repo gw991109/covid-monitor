@@ -291,7 +291,10 @@ def process_us_timeseries(path, category, sess):
         with open(path, 'r') as csv_file:
             csv_reader = csv.reader(csv_file)
             header = next(csv_reader)
-            dates = header[12:]
+            if category == "deaths":
+                dates = header[12:]
+            else:
+                dates = header[11:]
             for line in csv_reader:
                 province_state = line[6]
                 country_region = line[7]
