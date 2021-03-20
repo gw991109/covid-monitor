@@ -9,6 +9,47 @@ SESSION_TYPE = 'filesystem'
 app.config.from_object(__name__)
 Session(app)
 
+class Report:
+    confirmed = None
+    deaths = None
+    recovered = None
+    active = None
+
+    def __init__(self, confirmed = None, deaths = None,
+                 recovered = None, active = None, category = None, num = None):
+        self.confirmed = confirmed
+        self.deaths = deaths
+        self.recovered = recovered
+        self.active = active
+        if category:
+            self.set_data(category, num)
+
+    def set_data(self, category, num):
+        if category == "confirmed" or category == "Confirmed":
+            self.confirmed = num
+            return True
+        if category == "deaths" or category == "Deaths":
+            self.deaths = num
+            return True
+        if category == "recovered" or category == "Recovered":
+            self.recovered = num
+            return True
+        if category == "Active" or category == "Active":
+            self.active = num
+            return True
+        return False
+
+    def get_confirmed(self):
+        return self.confirmed
+
+    def get_deaths(self):
+        return self.deaths
+
+    def get_recovered(self):
+        return self.recovered
+
+    def get_active(self):
+        return self.active
 
 class WorldDailyReport:
     province_state = None
@@ -102,21 +143,72 @@ class USDailyReport(WorldDailyReport):
         self.testing_rate = testing_rate
         self.hospitalization_rate = hospitalization_rate
 
-
 class Country:
     province_state = None
     country_region = None
-    lat = None
-    long = None
-    time_series = None
+    reports = None
 
-    def __init__(self, time_series, province_state=None, country_region=None,
-                 lat=None, long=None):
-        self.province_state = province_state
+    def __init__(self, country_region=None):
         self.country_region = country_region
-        self.lat = lat
-        self.long = long
-        self.time_series = time_series
+        self.province_state = {}
+        self.reports = {}
+
+    def add_dated_report(self, date, report):
+        self.reports[date] = report
+
+    def get_reports(self):
+        return self.reports
+
+    def add_province(self, province_state):
+        self.province_state[province_state] = Province(province_state)
+
+    def get_province(self, province_state):
+        if province_state in self.province_state:
+            return self.province_state[province_state]
+        return None
+
+    def add_province_dated_report(self, province_state, date, report):
+        if province_state in self.province_state:
+            self.province_state[province_state].add_report(date, report)
+        return None
+
+    def get_province_dated_report(self, province_state, date):
+        if province_state in self.province_state:
+            if date in self.province_state[province_state].reports:
+                return self.province_state[province_state].reports[date]
+        return None
+
+    def get_province_reports(self, province_state):
+        if province_state in self.province_state:
+            return self.province_state[province_state].get_reports()
+        return None
+
+class Province:
+    province_state = None
+    provincial_reports = None
+
+    def __init__(self, province_state):
+        self.province_state = province_state
+        self.provincial_reports = {}
+
+    def add_report(self, date, report):
+        self.provincial_reports[date] = report
+
+    def add_dated_report(self, date, num, category):
+        if date in self.provincial_reports:
+            report = self.provincial_reports[date]
+            report.set_data(category, num)
+        else:
+            report = Report()
+            report.set_data(category, num)
+            self.provincial_reports[date] = report
+
+    def get_reports(self):
+        return self.provincial_reports
+
+    def get_dated_report(self, date):
+        if date in self.provincial_reports:
+            return self.provincial_reports[date]
 
 
 class Date:
