@@ -331,11 +331,9 @@ def process_global_timeseries(path, category, sess):
             for line in csv_reader:
                 province_state = line[0]
                 country_region = line[1]
-                # if country_region in sess["countries"]:
-                if country_region in countries_dict:
+                if country_region in sess["countries"]:
                     # Country exists, update reports
-                    # country = sess["countries"][country_region]
-                    country = countries_dict[country_region]
+                    country = sess["countries"][country_region]
                     if province_state != '' and province_state in country.province_state:
                         # Updating province numbers for given category
                         province_reports = country.province_state[province_state].get_reports
@@ -367,6 +365,17 @@ def process_global_timeseries(path, category, sess):
                                 report.set_data(category, num)
                             else:
                                 country_reports[date] = Report(category = category, num = num)
+                elif province_state != '':
+                    # Add country and add provinces and updated reports.
+                    country = Country(country_region)
+                    country.add_province(province_state)
+                    for index in range(len(dates)):
+                        date = dates[index]
+                        num = line[index+4]
+                        report = Report()
+                        report.set_data(category, num)
+                        country.add_province_dated_report(province_state, date, report)
+                    sess['countries'][country_region] = country
                 else:
                     # Country does not exist in our records, add country then update reports
                     country = Country(country_region)
@@ -375,13 +384,79 @@ def process_global_timeseries(path, category, sess):
                         date = dates[index]
                         num = line[index+4]
                         country_reports[date] = Report(category=category, num=num)
-                    countries_dict[country_region] = country
-                    # sess['countries'][country_region] = country
+                    sess['countries'][country_region] = country
         return True
     except EnvironmentError:
         print("With statement failed")
         return False
 
+def process_us_timeseries(path, category, sess):
+    try:
+        with open(path, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            header = next(csv_reader)
+            dates = header[12:]
+            for line in csv_reader:
+                province_state = line[6]
+                country_region = line[7]
+                if country_region in sess["countries"]:
+                    # Country exists, update reports
+                    country = sess["countries"][country_region]
+                    if province_state != '' and province_state in country.province_state:
+                        # Updating province numbers for given category
+                        province_reports = country.province_state[province_state].get_reports
+                        for index in range(len(dates)):
+                            date = dates[index]
+                            num = line[index+10]
+                            if date in province_reports:
+                                report = province_reports[date]
+                                report.set_data(category, num)
+                            else:
+                                province_reports[date] = Report(category = category, num = num)
+                    elif province_state != '':
+                        # Adding province first then update numbers
+                        country.add_province(province_state)
+                        province = country.get_province(province_state)
+                        province_reports = province.get_reports()
+                        for index in range(len(dates)):
+                            date = dates[index]
+                            num = line[index+10]
+                            province_reports[date] = Report(category = category, num = num)
+                    else:
+                        # No province provided. Update country reports directly
+                        country_reports = country.get_reports()
+                        for index in range(len(dates)):
+                            date = dates[index]
+                            num = line[index+10]
+                            if date in country_reports:
+                                report = country_reports[date]
+                                report.set_data(category, num)
+                            else:
+                                country_reports[date] = Report(category = category, num = num)
+                elif province_state != '':
+                    # Add country and add provinces and updated reports.
+                    country = Country(country_region)
+                    country.add_province(province_state)
+                    for index in range(len(dates)):
+                        date = dates[index]
+                        num = line[index + 10]
+                        report = Report()
+                        report.set_data(category, num)
+                        country.add_province_dated_report(province_state, date, report)
+                    sess['countries'][country_region] = country
+                else:
+                    # Country does not exist in our records, add country then update reports
+                    country = Country(country_region)
+                    country_reports = country.get_reports()
+                    for index in range(len(dates)):
+                        date = dates[index]
+                        num = line[index+10]
+                        country_reports[date] = Report(category=category, num=num)
+                    sess['countries'][country_region] = country
+        return True
+    except EnvironmentError:
+        print("With statement failed")
+        return False
 
 
 def process_daily_report_world(path, date, session):
