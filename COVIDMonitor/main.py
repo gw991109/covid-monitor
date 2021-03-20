@@ -525,13 +525,15 @@ def upload():
             file.save(path)
             print(f"Path: {path}")
             print(f"File name: {file.filename}")
-            process_file(path, file.filename, session)
-            print("file saved")
-            info = 'success'
+            if process_file(path, file.filename, session):
+                print("file saved successfully.")
+                info = 'Successfully uploaded file!'
+            else:
+                info = 'File saving failed.'
 
         except():
             print('error')
-            info = 'failure'
+            info = 'File saving failed.'
 
     return render_template("upload.html", text=info)
 
