@@ -73,12 +73,6 @@ class Country:
     def add_report(self, date, report):
         self.reports[date] = report
 
-    def get_report(self, date, report):
-        """
-        Get a recovered/deaths/confirmed/active time series under this country
-        """
-        return self.reports
-
     def add_dated_report(self, date, category, num):
         """
         Add a recovered/deaths/confirmed/active time series under this country
@@ -422,13 +416,10 @@ def process_daily_report_us(path, date, sess):
                     f"Province: {province_state}. Country: {country_region}. Confirmed: {confirmed}. Deaths: {deaths}. "
                     f"Recovered: {recovered}. Active: {active}.")
                 if country_region in sess["countries"]:
-                    # if country_region in countries_dict:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
-                    # country = countries_dict[country_region]
                     if province_state != '' and province_state in country.province_state:
                         # Updating province numbers for given category
-                        # print("Country and province exists.")
                         country.add_province_dated_report(province_state, date,
                                                           Report(confirmed,
                                                                  deaths,
@@ -436,18 +427,12 @@ def process_daily_report_us(path, date, sess):
                                                                  active))
                     elif province_state != '':
                         # Adding province first then update numbers
-                        # print("Country exists province doesnt.")
                         country.add_province(province_state)
-                        # print(province)
-                        # province.add_report(date, report)
                         country.add_province_dated_report(province_state, date,
                                                           Report(confirmed,
                                                                  deaths,
                                                                  recovered,
                                                                  active))
-                        # province_reports = province.get_reports()
-                        # print(province_reports[date])
-                        # print(province_reports[date].get_confirmed())
                     else:
                         # No province provided. Update country reports directly
                         country.add_province_dated_report(province_state, date,
@@ -471,33 +456,6 @@ def process_daily_report_us(path, date, sess):
 
                     sess['countries'][country_region] = country
                     # countries_dict[country_region] = country
-                    print("INSERTED")
-
-        # country = sess['countries']['US']
-        # for province in country.province_state:
-        #     prov = country.province_state[province]
-        #     print(province)
-        #     print(hex(id(prov.provincial_reports)))
-        #     print(prov.get_dated_report(date))
-        #     print(prov.get_dated_report(date).get_confirmed())
-        # reports = country.get_province_reports(province)
-        # prov = country.get_province(province)
-        # reports2 = prov.get_report(date)
-        # reports3 = prov.reports[date]
-        # print(reports)
-        # print(reports['01-02-2021'])
-        # print(reports2)
-        # print(reports3)
-        # print(reports['01-02-2021'].get_confirmed())
-        # print(reports2.get_confirmed())
-        # print(reports3.get_confirmed())
-        # provinces = session["countries"]['US'].province_state
-        # for item in provinces:
-        #     print(item)
-        #     prov = provinces[item]
-        #     report = prov.get_reports()[date]
-        #     print(f"confirmed: {report.get_confirmed()}")
-        # return True
     except EnvironmentError:
         print("With statement failed")
         return False
