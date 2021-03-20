@@ -162,6 +162,9 @@ class Country:
         self.province_state = {}
         self.reports = {}
 
+    def add_report(self, date, report):
+        self.reports[date] = report
+
     def get_report(self, date, report):
         """
         Get a recovered/deaths/confirmed/active time series under this country
@@ -438,33 +441,61 @@ def process_us_timeseries(path, category, sess):
         return False
 
 
-def process_daily_report_world(path, date, session):
-    date_object = Date(date)
-    with open(path, 'r') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        next(csv_reader)
-        for line in csv_reader:
-            fips = line[0]
-            admin2 = line[1]
-            province_state = line[2]
-            country_region = line[3]
-            last_update = line[4]
-            lat = line[5]
-            long = line[6]
-            confirmed = line[7]
-            deaths = line[8]
-            recovered = line[9]
-            active = line[10]
-            combined_key = line[11]
-            incident_rate = line[12]
-            fatality_ratio = line[13]
-            report = WorldDailyReport(province_state, country_region,
-                                      last_update, lat, long, confirmed, deaths,
-                                      recovered, active, combined_key,
-                                      incident_rate, fatality_ratio, fips,
-                                      admin2)
-            date_object.add_report(country_region, report)
-    session['all_world_reports'][date] = date_object
+def process_daily_report_world(path, date, sess):
+    try:
+        with open(path, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            next(csv_reader)
+            for line in csv_reader:
+                province_state = line[2]
+                country_region = line[3]
+                confirmed = line[7]
+                deaths = line[8]
+                recovered = line[9]
+                active = line[10]
+                if country_region in sess["countries"]:
+                    # Country exists, update reports
+                    country = sess["countries"][country_region]
+                    if province_state != '' and province_state in country.province_state:
+                        # Updating province numbers for given category
+                        country.add_province_dated_report(province_state, date,
+                                                          Report(confirmed,
+                                                                 deaths,
+                                                                 recovered,
+                                                                 active))
+                    elif province_state != '':
+                        # Adding province first then update numbers
+                        country.add_province(province_state)
+                        country.add_province_dated_report(province_state, date,
+                                                          Report(confirmed,
+                                                                 deaths,
+                                                                 recovered,
+                                                                 active))
+                    else:
+                        # No province provided. Update country reports directly
+                        country.add_province_dated_report(province_state, date,
+                                                          Report(confirmed,
+                                                                 deaths,
+                                                                 recovered,
+                                                                 active))
+                elif province_state != '':
+                    # New country with states
+                    country = Country(country_region)
+                    country.add_province(province_state)
+                    country.add_province_dated_report(province_state, date,
+                                                      Report(confirmed, deaths,
+                                                             recovered, active))
+                    sess['countries'][country_region] = country
+                else:
+                    # Add new country with no states
+                    country = Country(country_region)
+                    country.add_report(date, Report(confirmed, deaths,
+                                                          recovered, active))
+                    sess['countries'][country_region] = country
+        return True
+    except EnvironmentError:
+        print("With statement failed")
+        return False
 
 
 def process_daily_report_us(path, date, session):
