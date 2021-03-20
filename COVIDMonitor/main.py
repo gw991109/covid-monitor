@@ -638,12 +638,6 @@ def home():
     session['uploaded'] = False
     return redirect(url_for("upload"))
 
-
-@app.route('/monitor')
-def welcome_monitor():
-    return render_template("index.html")
-
-
 @app.route('/upload', methods=["GET", "POST"])
 def upload():
     info = ''
