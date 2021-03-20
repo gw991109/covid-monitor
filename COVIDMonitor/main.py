@@ -51,98 +51,6 @@ class Report:
     def get_active(self):
         return self.active
 
-class WorldDailyReport:
-    province_state = None
-    country_region = None
-    last_update = None
-    lat = None
-    long = None
-    confirmed = None
-    deaths = None
-    recovered = None
-    active = None
-    combined_key = None
-    incident_rate = None
-    case_fatality_ratio = None
-    fips = None
-    admin2 = None
-
-    def __init__(self, province_state=None,
-                 country_region=None,
-                 last_update=None,
-                 lat=None,
-                 long=None,
-                 confirmed=None,
-                 deaths=None,
-                 recovered=None,
-                 active=None,
-                 combined_key=None,
-                 incident_rate=None,
-                 case_fatality_ratio=None,
-                 fips=None,
-                 admin2=None):
-        self.province_state = province_state
-        self.country_region = country_region
-        self.last_update = last_update
-        self.lat = lat
-        self.long = long
-        self.confirmed = confirmed
-        self.deaths = deaths
-        self.recovered = recovered
-        self.active = active
-        self.combined_key = combined_key
-        self.incident_rate = incident_rate
-        self.case_fatality_ratio = case_fatality_ratio
-        self.fips = fips
-        self.admin2 = admin2
-
-
-class USDailyReport(WorldDailyReport):
-    total_test_results = None
-    people_hospitalized = None
-    uid = None
-    iso3 = None
-    testing_rate = None
-    hospitalization_rate = None
-
-    def __init__(self, uid,
-                 province_state=None,
-                 country_region=None,
-                 last_update=None,
-                 lat=None,
-                 long=None,
-                 confirmed=None,
-                 deaths=None,
-                 recovered=None,
-                 active=None,
-                 incident_rate=None,
-                 case_fatality_ratio=None,
-                 fips=None,
-                 total_test_results=None,
-                 people_hospitalized=None,
-                 iso3=None,
-                 testing_rate=None,
-                 hospitalization_rate=None):
-        super().__init__(province_state,
-                         country_region,
-                         last_update,
-                         lat,
-                         long,
-                         confirmed,
-                         deaths,
-                         recovered,
-                         active,
-                         None,
-                         incident_rate,
-                         case_fatality_ratio,
-                         fips)
-        self.uid = uid
-        self.total_test_results = total_test_results
-        self.people_hospitalized = people_hospitalized
-        self.iso3 = iso3
-        self.testing_rate = testing_rate
-        self.hospitalization_rate = hospitalization_rate
-
 class Country:
     """
     A country class representing a country.
@@ -490,7 +398,7 @@ def process_daily_report_world(path, date, sess):
                     # Add new country with no states
                     country = Country(country_region)
                     country.add_report(date, Report(confirmed, deaths,
-                                                          recovered, active))
+                                                    recovered, active))
                     sess['countries'][country_region] = country
         return True
     except EnvironmentError:
@@ -498,36 +406,101 @@ def process_daily_report_world(path, date, sess):
         return False
 
 
-def process_daily_report_us(path, date, session):
-    with open(path, 'r') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        next(csv_reader)
-        for line in csv_reader:
-            province_state = line[0]
-            country_region = line[1]
-            last_update = line[2]
-            lat = line[3]
-            long = line[4]
-            confirmed = line[5]
-            deaths = line[6]
-            recovered = line[7]
-            active = line[8]
-            fips = line[9]
-            incident_rate = line[10]
-            total_test_results = line[11]
-            people_hospitalized = line[12]
-            fatality_ratio = line[13]
-            uid = line[14]
-            iso3 = line[15]
-            testing_rate = line[16]
-            hospitlization_rate = line[17]
-            report = USDailyReport(uid, province_state, country_region,
-                                   last_update, lat, long, confirmed, deaths,
-                                   recovered, active, incident_rate,
-                                   fatality_ratio, fips, total_test_results,
-                                   people_hospitalized, iso3, testing_rate,
-                                   hospitlization_rate)
-            session['all_us_reports'][date] = report
+def process_daily_report_us(path, date, sess):
+    try:
+        with open(path, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            next(csv_reader)
+            for line in csv_reader:
+                province_state = line[0]
+                country_region = line[1]
+                confirmed = line[5]
+                deaths = line[6]
+                recovered = line[7]
+                active = line[8]
+                print(
+                    f"Province: {province_state}. Country: {country_region}. Confirmed: {confirmed}. Deaths: {deaths}. "
+                    f"Recovered: {recovered}. Active: {active}.")
+                if country_region in sess["countries"]:
+                    # if country_region in countries_dict:
+                    # Country exists, update reports
+                    country = sess["countries"][country_region]
+                    # country = countries_dict[country_region]
+                    if province_state != '' and province_state in country.province_state:
+                        # Updating province numbers for given category
+                        # print("Country and province exists.")
+                        country.add_province_dated_report(province_state, date,
+                                                          Report(confirmed,
+                                                                 deaths,
+                                                                 recovered,
+                                                                 active))
+                    elif province_state != '':
+                        # Adding province first then update numbers
+                        # print("Country exists province doesnt.")
+                        country.add_province(province_state)
+                        # print(province)
+                        # province.add_report(date, report)
+                        country.add_province_dated_report(province_state, date,
+                                                          Report(confirmed,
+                                                                 deaths,
+                                                                 recovered,
+                                                                 active))
+                        # province_reports = province.get_reports()
+                        # print(province_reports[date])
+                        # print(province_reports[date].get_confirmed())
+                    else:
+                        # No province provided. Update country reports directly
+                        country.add_province_dated_report(province_state, date,
+                                                          Report(confirmed,
+                                                                 deaths,
+                                                                 recovered,
+                                                                 active))
+                elif province_state != '':
+                    # Add new country with states
+                    country = Country(country_region)
+                    country.add_province(province_state)
+                    country.add_province_dated_report(province_state, date,
+                                                      Report(confirmed, deaths,
+                                                             recovered, active))
+                    sess['countries'][country_region] = country
+                else:
+                    # Add new country with no states
+                    country = Country(country_region)
+                    country.add_report(date, Report(confirmed, deaths,
+                                                    recovered, active))
+
+                    sess['countries'][country_region] = country
+                    # countries_dict[country_region] = country
+                    print("INSERTED")
+
+        # country = sess['countries']['US']
+        # for province in country.province_state:
+        #     prov = country.province_state[province]
+        #     print(province)
+        #     print(hex(id(prov.provincial_reports)))
+        #     print(prov.get_dated_report(date))
+        #     print(prov.get_dated_report(date).get_confirmed())
+        # reports = country.get_province_reports(province)
+        # prov = country.get_province(province)
+        # reports2 = prov.get_report(date)
+        # reports3 = prov.reports[date]
+        # print(reports)
+        # print(reports['01-02-2021'])
+        # print(reports2)
+        # print(reports3)
+        # print(reports['01-02-2021'].get_confirmed())
+        # print(reports2.get_confirmed())
+        # print(reports3.get_confirmed())
+        # provinces = session["countries"]['US'].province_state
+        # for item in provinces:
+        #     print(item)
+        #     prov = provinces[item]
+        #     report = prov.get_reports()[date]
+        #     print(f"confirmed: {report.get_confirmed()}")
+        # return True
+    except EnvironmentError:
+        print("With statement failed")
+        return False
 
 
 @app.route('/')
