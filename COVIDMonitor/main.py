@@ -221,6 +221,57 @@ class Date:
     def add_report(self, country, report):
         self.reports[country] = report
 
+def determine_file_type(path, filename):
+    if ".csv" in filename:
+        filename = filename[:-4]
+        print(f"Truncated file name: {filename}")
+        try:
+            datetime.datetime.strptime(filename, '%m-%d-%Y')
+            # daily report format, find out if its world or US
+            with open(path, 'r') as csv_file:
+                csv_reader = csv.reader(csv_file)
+                entry = next(csv_reader)[0]
+                if entry == 'FIPS':
+                    return "world"
+                elif entry == "Province_State":
+                    return "us"
+        except ValueError:
+            # check if it's a time series
+            split = filename.split('_')
+            if len(split) == 5:
+                return split[4] + split[5]
+    return "incorrect"
+
+def process_file(path, filename, session):
+    file_type = determine_file_type(path, filename)
+    print(f"File type: {file_type}")
+    if file_type == "incorrect":
+        return False
+    if file_type == "world":
+        date = filename[:-4]
+        return process_daily_report_world(path, date, session)
+
+    if file_type == "us":
+        date = filename[:-4]
+        return process_daily_report_us(path, date, session)
+
+    if file_type == "deathsglobal":
+        process_global_timeseries(path, "deaths", session)
+        return True
+    if file_type == "deathsUS":
+        process_us_timeseries(path, "deaths", session)
+        return True
+    if file_type == "confirmedglobal":
+        process_global_timeseries(path, "confirmed", session)
+        return True
+    if file_type == "confirmedUS":
+        process_us_timeseries(path, "confirmed", session)
+        return True
+    if file_type == "recoveredglobal":
+        process_global_timeseries(path, "recovered", session)
+        return True
+    return False
+
 
 def process_daily_report_world(path, date, session):
     date_object = Date(date)
@@ -301,12 +352,23 @@ os.makedirs(uploads_dir, exist_ok=True)
 
 @app.route('/upload', methods=["GET", "POST"])
 def upload():
+    info = ''
     if request.method == "POST" and request.files:
-        file = request.files["file"]
-        file.save(os.path.join(uploads_dir, file.filename))
-        print("file saved")
-        return redirect(request.url)
-    return render_template("upload.html")
+        try:
+            file = request.files["file"]
+            path = os.path.join(uploads_dir, file.filename)
+            file.save(path)
+            print(f"Path: {path}")
+            print(f"File name: {file.filename}")
+            process_file(path, file.filename, session)
+            print("file saved")
+            info = 'success'
+
+        except():
+            print('error')
+            info = 'failure'
+
+    return render_template("upload.html", text=info)
 
 
 @app.route('/query', methods=['POST', 'GET'])
