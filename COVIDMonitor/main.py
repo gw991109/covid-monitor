@@ -144,6 +144,15 @@ class USDailyReport(WorldDailyReport):
         self.hospitalization_rate = hospitalization_rate
 
 class Country:
+    """
+    A country class representing a country.
+
+    --- Attributes ---
+    province_state: A dictionary of provinces.
+    country_region: Name of this country or region.
+    time_series: Time series of this country as a whole.
+
+    """
     province_state = None
     country_region = None
     reports = None
@@ -153,13 +162,27 @@ class Country:
         self.province_state = {}
         self.reports = {}
 
-    def add_dated_report(self, date, report):
-        self.reports[date] = report
-
-    def get_reports(self):
+    def get_report(self, date, report):
+        """
+        Get a recovered/deaths/confirmed/active time series under this country
+        """
         return self.reports
 
+    def add_dated_report(self, date, category, num):
+        """
+        Add a recovered/deaths/confirmed/active time series under this country
+        """
+        if date in self.reports:
+            self.reports[date].set_data(category, num)
+        else:
+            report = Report()
+            report.set_data(category, num)
+            self.reports[date] = report
+
     def add_province(self, province_state):
+        """
+        Adding a new province for this country
+        """
         self.province_state[province_state] = Province(province_state)
 
     def get_province(self, province_state):
@@ -168,9 +191,13 @@ class Country:
         return None
 
     def add_province_dated_report(self, province_state, date, report):
+        """
+        Set time series for the given province.
+        """
         if province_state in self.province_state:
             self.province_state[province_state].add_report(date, report)
-        return None
+            return True
+        return False
 
     def get_province_dated_report(self, province_state, date):
         if province_state in self.province_state:
@@ -178,12 +205,26 @@ class Country:
                 return self.province_state[province_state].reports[date]
         return None
 
+    def update_province_dated_report(self, province_state, date, category, num):
+        if province_state in self.province_state:
+            self.province_state[province_state].add_dated_report(date, category, num)
+        return False
+
     def get_province_reports(self, province_state):
+        """
+        Return the type of time series from this province
+        """
         if province_state in self.province_state:
             return self.province_state[province_state].get_reports()
         return None
 
 class Province:
+    """
+    A class representing a province.
+    ---Attributes---
+    province_state: name of this province
+    provincial_reports: A list of reports for this province
+    """
     province_state = None
     provincial_reports = None
 
@@ -192,9 +233,16 @@ class Province:
         self.provincial_reports = {}
 
     def add_report(self, date, report):
+        """
+        Add a recovered/deaths/confirmed/active time series under this province
+        """
         self.provincial_reports[date] = report
+        return True
 
-    def add_dated_report(self, date, num, category):
+    def add_dated_report(self, date, category, num):
+        """
+        Used specifically for updating one category of a report
+        """
         if date in self.provincial_reports:
             report = self.provincial_reports[date]
             report.set_data(category, num)
@@ -204,12 +252,14 @@ class Province:
             self.provincial_reports[date] = report
 
     def get_reports(self):
+        """
+        Get a recovered/deaths/confirmed/active time series under this province
+        """
         return self.provincial_reports
 
     def get_dated_report(self, date):
         if date in self.provincial_reports:
             return self.provincial_reports[date]
-
 
 class Date:
     date = None
@@ -271,6 +321,67 @@ def process_file(path, filename, session):
         process_global_timeseries(path, "recovered", session)
         return True
     return False
+
+def process_global_timeseries(path, category, sess):
+    try:
+        with open(path, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            header = next(csv_reader)
+            dates = header[4:]
+            for line in csv_reader:
+                province_state = line[0]
+                country_region = line[1]
+                # if country_region in sess["countries"]:
+                if country_region in countries_dict:
+                    # Country exists, update reports
+                    # country = sess["countries"][country_region]
+                    country = countries_dict[country_region]
+                    if province_state != '' and province_state in country.province_state:
+                        # Updating province numbers for given category
+                        province_reports = country.province_state[province_state].get_reports
+                        for index in range(len(dates)):
+                            date = dates[index]
+                            num = line[index+4]
+                            if date in province_reports:
+                                report = province_reports[date]
+                                report.set_data(category, num)
+                            else:
+                                province_reports[date] = Report(category = category, num = num)
+                    elif province_state != '':
+                        # Adding province first then update numbers
+                        country.add_province(province_state)
+                        province = country.get_province(province_state)
+                        province_reports = province.get_reports()
+                        for index in range(len(dates)):
+                            date = dates[index]
+                            num = line[index+4]
+                            province_reports[date] = Report(category = category, num = num)
+                    else:
+                        # No province provided. Update country reports directly
+                        country_reports = country.get_reports()
+                        for index in range(len(dates)):
+                            date = dates[index]
+                            num = line[index+4]
+                            if date in country_reports:
+                                report = country_reports[date]
+                                report.set_data(category, num)
+                            else:
+                                country_reports[date] = Report(category = category, num = num)
+                else:
+                    # Country does not exist in our records, add country then update reports
+                    country = Country(country_region)
+                    country_reports = country.get_reports()
+                    for index in range(len(dates)):
+                        date = dates[index]
+                        num = line[index+4]
+                        country_reports[date] = Report(category=category, num=num)
+                    countries_dict[country_region] = country
+                    # sess['countries'][country_region] = country
+        return True
+    except EnvironmentError:
+        print("With statement failed")
+        return False
+
 
 
 def process_daily_report_world(path, date, session):
