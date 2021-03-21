@@ -1,0 +1,25 @@
+{% block main %}
+
+
+<div class="container">
+  <div class="row">
+    <div class="col">
+
+
+          <form action="{{url_for('download_file')}}">
+            <h2>Download </h2>
+            <label for="file_type">Choose a type:</label>
+            <select name="file_type" class="selectpicker form-control">
+              <option value="txt">Text</option>
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </select>
+            <br><br>
+            <input type="submit" value="Submit">
+        </form>
+    
+    </div>
+  </div>
+</div>
+
+{% endblock %}
