@@ -550,8 +550,8 @@ def write_to_file(result, session, filepath):
                 if session['download_type']!= 'json':
                     curr_string = country+','+province+','+date+','+data+'\n'
                     fo.write(curr_string)
-            if session['download_type']== 'json':
-                json.dump(json_data,fo)
+        if session['download_type']== 'json':
+            json.dump(json_data,fo)
 
 
 def change_date_format(date_string):
@@ -568,11 +568,18 @@ def change_date_format(date_string):
 
 
 def get_date(date_string):
-    # date_string follow the formate mm/dd/yy
-    date_lst = date_string.split('/')
+    split_char = '/' if '/' in date_string else '-'
+    date_lst = date_string.split(split_char)
     month = int(date_lst[0])
     day = int(date_lst[1])
-    year = int('20'+date_lst[2])
+
+    # date_string follow the formate mm/dd/yyyy
+    if len(date_string) == 10:
+        year = int(date_lst[2])
+    # date_string follow the formate mm/dd/yy
+    else:
+        year = int('20'+date_lst[2])
+
 
     return datetime.date(year, month, day)
 
@@ -675,8 +682,15 @@ def download_file():
     if vailid:
         result = get_result(session)
         path = os.path.join(downloads_dir, filename)
+        # clear out the previous data
+        if os.path.exists(path):
+            os.remove(path)
         write_to_file(result, session, path)
         session['download_file'] = path
+        # reset the session for user if user want to get another query's data
+        session['query_options'] = {'countries': [], 'provinces': [],
+                                'combined_keys': [], 'date': ['',''], 'field': 'deaths'}
+
         try:
             return send_file(session['download_file'], as_attachment=True)
         except:
