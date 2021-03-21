@@ -55,4 +55,3 @@ This design has the benefit that it is very well structured. Queries can only be
 And since combined key is just a combination of country and province, we can just break up the string and query like normal.
 Reports each represent the confirmed, deaths, recovered, and active cases for a certain day, therefore each country or province instance has a reports attribute which is a dictionary with dates as keys and reports for that day's report. While this means there needs to be many report instances, and may be inefficient with respect to time, it is very structured and organized. 
 
-

@@ -690,7 +690,6 @@ def download_file():
         # reset the session for user if user want to get another query's data
         session['query_options'] = {'countries': [], 'provinces': [],
                                 'combined_keys': [], 'date': ['',''], 'field': 'deaths'}
-
         try:
             return send_file(session['download_file'], as_attachment=True)
         except:
