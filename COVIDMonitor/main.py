@@ -83,6 +83,10 @@ class Country:
     def add_report(self, date, report):
         self.reports[date] = report
 
+    def get_report(self, date):
+        if date in self.reports:
+            return self.reports[date]
+
     def add_dated_report(self, date, category, num):
         """
         Add a recovered/deaths/confirmed/active time series under this country
@@ -180,7 +184,6 @@ class Province:
 def determine_file_type(path, filename):
     if ".csv" in filename:
         filename = filename[:-4]
-        print(f"Truncated file name: {filename}")
         try:
             datetime.datetime.strptime(filename, '%m-%d-%Y')
             # daily report format, find out if its world or US
@@ -201,7 +204,6 @@ def determine_file_type(path, filename):
 
 def process_file(path, filename, session):
     file_type = determine_file_type(path, filename)
-    print(f"File type: {file_type}")
     if file_type == "incorrect":
         return False
     session['file_type'] = file_type
@@ -242,7 +244,6 @@ def process_global_timeseries(path, category, sess):
             for line in csv_reader:
                 province_state = line[0]
                 country_region = line[1]
-                print(country_region)
                 if country_region in sess["countries"]:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
@@ -303,7 +304,6 @@ def process_us_timeseries(path, category, sess):
             for line in csv_reader:
                 province_state = line[6]
                 country_region = line[7]
-                print(f"Country: {country_region}. Province: {province_state}.")
                 if country_region in sess["countries"]:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
@@ -420,9 +420,6 @@ def process_daily_report_us(path, date, sess):
                 deaths = line[6]
                 recovered = line[7]
                 active = line[8]
-                print(
-                    f"Province: {province_state}. Country: {country_region}. Confirmed: {confirmed}. Deaths: {deaths}. "
-                    f"Recovered: {recovered}. Active: {active}.")
                 if country_region in sess["countries"]:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
@@ -468,14 +465,6 @@ def process_daily_report_us(path, date, sess):
         return False
 
 
-
-<<<<<<< HEAD
-=======
-
-
-
-
-
 # return a dictionary base on the data and query
 def get_result(session):
     # result = {(country, provinces):{date1: report1, date2:report2, ....}, ....}
@@ -483,7 +472,6 @@ def get_result(session):
     countries_query = session['query_options']['countries']
     provinces_query = session['query_options']['provinces']
     combined_keys_query = session['query_options']['combined_keys']
-    print(session['query_options'])
     start_date = session['query_options']['date'][0]
     if start_date == '':
         start_date = datetime.date.min
@@ -493,7 +481,7 @@ def get_result(session):
     if end_date == '':
         end_date = datetime.date.max
     else:
-        end_date = get_data(end_date)
+        end_date = get_date(end_date)
 
     for country_region in session['countries']:
         curr_country = session['countries'][country_region]
@@ -524,10 +512,9 @@ def get_result(session):
                                 result[(country_region,province)] = {date: curr_report}
     return result
 
+
 def write_to_file(result, session, filepath):
     field = session['query_options']['field']
-    print(session)
-    print(field)
 
     with open(filepath, "w") as fo:
         header = 'Country, Province, date, '+field+'\n'
@@ -567,7 +554,6 @@ def write_to_file(result, session, filepath):
                 json.dump(json_data,fo)
 
 
-
 def change_date_format(date_string):
     date_lst = date_string.split('-')
     month = date_lst[0]
@@ -578,15 +564,12 @@ def change_date_format(date_string):
         month = month[-1]
     if day[0] =='0':
         day = day[-1]
-    print(date_lst)
     return month+'/'+day+'/'+year
 
 
 def get_date(date_string):
     # date_string follow the formate mm/dd/yy
     date_lst = date_string.split('/')
-    print(date_string)
-    print(date_lst)
     month = int(date_lst[0])
     day = int(date_lst[1])
     year = int('20'+date_lst[2])
@@ -594,7 +577,6 @@ def get_date(date_string):
     return datetime.date(year, month, day)
 
 
->>>>>>> bdd0dfbcd637440f35b51e7cd1b023c70dd47eda
 @app.route('/')
 def home():
     session['query_options'] = {'countries': [], 'provinces': [],
@@ -617,8 +599,6 @@ def upload():
             file = request.files["file"]
             path = os.path.join(uploads_dir, file.filename)
             file.save(path)
-            print(f"Path: {path}")
-            print(f"File name: {file.filename}")
             process_file(path, file.filename, session)
             print("file saved")
             info = 'success'
@@ -684,19 +664,15 @@ def download_file():
     vailid = True
     session['download_type'] = request.args.get('file_type')
     if session['download_type'] == 'json':
-        print("json")
         filename = filename + 'json'
     elif session['download_type'] == 'csv':
-        print('csv')
         filename = filename + 'csv'
     elif session['download_type'] == 'txt':
-        print('text')
         filename = filename + 'txt'
     else:
         vailid = False
         print("invalid file type")
     if vailid:
-        print(session['query_options'])
         result = get_result(session)
         path = os.path.join(downloads_dir, filename)
         write_to_file(result, session, path)
