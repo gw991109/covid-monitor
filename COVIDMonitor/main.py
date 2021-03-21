@@ -1,9 +1,11 @@
 from typing import Any
-from data_objects import *;
 from flask import Flask, render_template, url_for, redirect, request, session, \
     send_file
 from flask_session import Session
 import os
+import csv
+import json
+import datetime
 
 app = Flask(__name__)
 SESSION_TYPE = 'filesystem'
@@ -467,6 +469,9 @@ def process_daily_report_us(path, date, sess):
 
 
 
+
+
+
 # return a dictionary base on the data and query
 def get_result(session):
     # result = {(country, provinces):{date1: report1, date2:report2, ....}, ....}
@@ -556,6 +561,33 @@ def write_to_file(result, session, filepath):
                     fo.write(curr_string)
             if session['download_type']== 'json':
                 json.dump(json_data,fo)
+
+
+
+def change_date_format(date_string):
+    date_lst = date_string.split('-')
+    month = date_lst[0]
+    day = date_lst[1]
+    year = date_lst[2][-2:]
+
+    if month[0] == '0':
+        month = month[-1]
+    if day[0] =='0':
+        day = day[-1]
+    print(date_lst)
+    return month+'/'+day+'/'+year
+
+
+def get_date(date_string):
+    # date_string follow the formate mm/dd/yy
+    date_lst = date_string.split('/')
+    print(date_string)
+    print(date_lst)
+    month = int(date_lst[0])
+    day = int(date_lst[1])
+    year = int('20'+date_lst[2])
+
+    return datetime.date(year, month, day)
 
 
 @app.route('/')
