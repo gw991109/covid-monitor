@@ -14,6 +14,8 @@ Session(app)
 
 uploads_dir = os.path.join(app.instance_path, 'uploads')
 os.makedirs(uploads_dir, exist_ok=True)
+downloads_dir = os.path.join(app.instance_path, 'downloads')
+os.makedirs(downloads_dir, exist_ok=True)
 
 
 class Report:
@@ -675,7 +677,7 @@ def data():
 @app.route('/download_file')
 def download_file():
     filename = 'result.'
-    p = './instance/downloads/'
+    p = downloads_dir
     vailid = True
     session['download_type'] = request.args.get('file_type')
     if session['download_type'] == 'json':
@@ -693,10 +695,9 @@ def download_file():
     if vailid:
         print(session['query_options'])
         result = get_result(session)
-
-        write_to_file(result, session, p+filename)
-        session['download_file'] = p+filename
-        print(p+filename)
+        path = os.path.join(downloads_dir, filename)
+        write_to_file(result, session, path)
+        session['download_file'] = path
         try:
             return send_file(session['download_file'], as_attachment=True)
         except:
