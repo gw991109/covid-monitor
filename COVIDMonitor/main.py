@@ -14,7 +14,6 @@ uploads_dir = os.path.join(app.instance_path, 'uploads')
 os.makedirs(uploads_dir, exist_ok=True)
 
 
-
 class Report:
     confirmed = None
     deaths = None
@@ -463,6 +462,100 @@ def process_daily_report_us(path, date, sess):
     except EnvironmentError:
         print("With statement failed")
         return False
+
+
+
+
+
+# return a dictionary base on the data and query
+def get_result(session):
+    # result = {(country, provinces):{date1: report1, date2:report2, ....}, ....}
+    result = {}
+    countries_query = session['query_options']['countries']
+    provinces_query = session['query_options']['provinces']
+    combined_keys_query = session['query_options']['combined_keys']
+    print(session['query_options'])
+    start_date = session['query_options']['date'][0]
+    if start_date == '':
+        start_date = datetime.date.min
+    else:
+        start_date  = get_date(start_date)
+    end_date = session['query_options']['date'][0]
+    if end_date == '':
+        end_date = datetime.date.max
+    else:
+        end_date = get_data(end_date)
+
+    for country_region in session['countries']:
+        curr_country = session['countries'][country_region]
+
+        # No provinces data
+        if len(curr_country.reports) != 0:
+            if (curr_country.country_region in countries_query or len(countries_query) ==0) and len(provinces_query) == 0 and (curr_country.country_region in combined_keys_query or len(combined_keys_query)==0):
+                for date in curr_country.reports:
+                    d = get_date(date)
+                    if start_date<=d<=end_date:
+                        curr_report = curr_country.reports[date]
+                        if (country_region,None) in result:
+                            result[(country_region,None)][date] = curr_report
+                        else:
+                            result[(country_region,None)] = {date: curr_report}
+        # provinces are not empty, reports in Provinces object
+        else:
+            for province in curr_country.province_state:
+                curr_combined_key = curr_country.country_region+', '+province
+                if (curr_country.country_region in countries_query or len(countries_query) ==0) and (province in provinces_query or len(provinces_query) == 0) and (curr_combined_key in combined_keys_query or len(combined_keys_query)==0):
+                    for date in curr_country.province_state[province].provincial_reports:
+                        d = get_date(date)
+                        if start_date<=d<=end_date:
+                            curr_report = curr_country.province_state[province].provincial_reports[date]
+                            if (country_region, province) in result:
+                                result[(country_region,province)][date] = curr_report
+                            else:
+                                result[(country_region,province)] = {date: curr_report}
+    return result
+
+def write_to_file(result, session, filepath):
+    field = session['query_options']['field']
+    print(session)
+    print(field)
+
+    with open(filepath, "w") as fo:
+        header = 'Country, Province, date, '+field+'\n'
+        json_data={}
+        json_data['reports']=[]
+        if session['download_type']!= 'json':
+            fo.write(header)
+        for location in result:
+            country = location[0]
+            province = location[1]
+            if province is None:
+                province = ''
+            for date in result[location]:
+                report = result[location][date]
+                data = ''
+                if field == 'deaths':
+                    data = report.deaths
+                elif field == 'confirmed':
+                    data = report.confirmed
+                elif field == 'active':
+                    data = report.active
+                elif field == 'recovered':
+                    data = report.recovered
+                if data is None:
+                    data = ''
+
+                json_data['reports'].append({
+                    'country': country,
+                    'province': province,
+                    'date': date,
+                    field: data
+                })
+                if session['download_type']!= 'json':
+                    curr_string = country+','+province+','+date+','+data+'\n'
+                    fo.write(curr_string)
+            if session['download_type']== 'json':
+                json.dump(json_data,fo)
 
 
 @app.route('/')
