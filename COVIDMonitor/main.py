@@ -629,7 +629,7 @@ def upload():
 
 @app.route('/query', methods = ['POST', 'GET'])
 def query():
-	message = ''
+	message = 'Date format: mm/dd/yy'
 	if request.method == 'POST':
 		if request.form['btn'] == 'add_country' and request.form['country'] != '':
 			session['query_options']['countries'].append(request.form['country'])
