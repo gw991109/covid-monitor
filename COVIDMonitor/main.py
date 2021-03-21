@@ -583,8 +583,6 @@ def change_date_format(date_string):
 def get_date(date_string):
     # date_string follow the formate mm/dd/yy
     date_lst = date_string.split('/')
-    print(date_string)
-    print(date_lst)
     month = int(date_lst[0])
     day = int(date_lst[1])
     year = int('20'+date_lst[2])
@@ -696,8 +694,15 @@ def download_file():
         print(session['query_options'])
         result = get_result(session)
         path = os.path.join(downloads_dir, filename)
+        # clear out the previous data
+        if os.path.exists(path):
+            os.remove(path)
         write_to_file(result, session, path)
         session['download_file'] = path
+        # reset the session for user if user want to get another query's data
+        session['query_options'] = {'countries': [], 'provinces': [],
+                                'combined_keys': [], 'date': ['',''], 'field': 'deaths'}
+        
         try:
             return send_file(session['download_file'], as_attachment=True)
         except:
