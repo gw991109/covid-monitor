@@ -491,7 +491,7 @@ def get_result(session):
     if end_date == '':
         end_date = datetime.date.max
     else:
-        end_date = get_data(end_date)
+        end_date = get_date(end_date)
 
     for country_region in session['countries']:
         curr_country = session['countries'][country_region]
@@ -524,8 +524,6 @@ def get_result(session):
 
 def write_to_file(result, session, filepath):
     field = session['query_options']['field']
-    print(session)
-    print(field)
 
     with open(filepath, "w") as fo:
         header = 'Country, Province, date, '+field+'\n'
@@ -561,8 +559,8 @@ def write_to_file(result, session, filepath):
                 if session['download_type']!= 'json':
                     curr_string = country+','+province+','+date+','+data+'\n'
                     fo.write(curr_string)
-            if session['download_type']== 'json':
-                json.dump(json_data,fo)
+        if session['download_type']== 'json':
+            json.dump(json_data,fo)
 
 
 
@@ -576,16 +574,22 @@ def change_date_format(date_string):
         month = month[-1]
     if day[0] =='0':
         day = day[-1]
-    print(date_lst)
     return month+'/'+day+'/'+year
 
 
 def get_date(date_string):
-    # date_string follow the formate mm/dd/yy
-    date_lst = date_string.split('/')
+    split_char = '/' if '/' in date_string else '-'
+    date_lst = date_string.split(split_char)
     month = int(date_lst[0])
     day = int(date_lst[1])
-    year = int('20'+date_lst[2])
+
+    # date_string follow the formate mm/dd/yyyy
+    if len(date_string) == 10:
+        year = int(date_lst[2])
+    # date_string follow the formate mm/dd/yy
+    else:
+        year = int('20'+date_lst[2])
+
 
     return datetime.date(year, month, day)
 
