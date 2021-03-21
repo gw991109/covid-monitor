@@ -463,6 +463,7 @@ def process_daily_report_us(path, date, sess):
         return False
 
 
+
 @app.route('/')
 def home():
     session['query_options'] = {'countries': [], 'provinces': [],
