@@ -22,6 +22,8 @@ You can start by running main.py, which is in the folder COVIDMonitor. main.py h
 python main.py
 ```
 
+If you want to try another data file or different query, you have to clear your browser history first to prevent download the previous result file.
+
 ## Running Tests 
 
 A starter template for unit tests can be found under tests/unit_tests.py
@@ -44,4 +46,9 @@ pytest --cov-report term --cov=COVIDMonitor tests/unit_tests.py
 #### query page
 - Driver: Gerald Wu
 - Navigator: Pao Hua Lin
-- Reflection: Since is our first time using flask, we spend lot of time to find out how to get and store the informations form user input, 
+- Reflection: Since is our first time using flask, we spend lot of time to find out how to get and store the informations from user input. It is very efficent using pair programming when coding this part, one person can search for the solution and other person can work on the code. 
+
+## Program design
+Base on the data files, we decided to have a class Country that has attributes country_region, province_state, and reports. country_region is a string that represent the name on the country. If the data file does not contain the information about province/state, then the attribute province_state will be an empty dictionary, and the report(deaths, confirmed, active, recovered) will be store in the reports dictionary with the key is the date. If the data file contain the information about province/state, then reports dictionary will be empty, province_state will be a dictionary that the key is the date and value is a Province object, the reports will be store in Province object.
+We also has a class Report for storing the report information, the attributes are deaths, active, confirmed, and recovered.
+
