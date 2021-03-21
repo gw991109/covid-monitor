@@ -275,16 +275,6 @@ def process_global_timeseries(path, category, sess):
                         country.add_dated_report(date, category, num)
                     sess['countries'][country_region] = country
 
-        # for count in sess['countries']:
-        #     country = sess['countries'][count]
-        #     for prov in country.province_state:
-        #         print(f"Country {count} Province {prov}")
-        #         province = country.province_state[prov]
-        #         reports = province.get_reports()
-        #         for date in reports:
-        #             report = reports[date]
-        #             print(report.get_confirmed())
-
         return True
     except EnvironmentError:
         print("With statement failed")
@@ -296,8 +286,7 @@ def process_us_timeseries(path, category, sess):
         with open(path, 'r') as csv_file:
             csv_reader = csv.reader(csv_file)
             header = next(csv_reader)
-            # changed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! used to be header[12:]
-            dates = header[11:]
+            dates = header[12:]
             for line in csv_reader:
                 province_state = line[6]
                 country_region = line[7]
@@ -343,16 +332,6 @@ def process_us_timeseries(path, category, sess):
                         num = line[index + 10]
                         country.add_dated_report(date, category, num)
                     sess['countries'][country_region] = country
-        # for count in sess['countries']:
-        #     country = sess['countries'][count]
-        #     print(count)
-        #     for prov in country.province_state:
-        #         province = country.province_state[prov]
-        #         reports = province.get_reports()
-        #         for date in reports:
-        #             report = reports[date]
-        #             print(report.get_confirmed())
-
 
         return True
     except EnvironmentError:
@@ -422,19 +401,12 @@ def process_daily_report_us(path, date, sess):
                     # country = countries_dict[country_region]
                     if province_state != '' and province_state in country.province_state:
                         # Updating province numbers for given category
-                        # print("Country and province exists.")
                         country.add_province_dated_report(province_state, date, Report(confirmed, deaths,
                                                         recovered, active))
                     elif province_state != '':
                         # Adding province first then update numbers
-                        # print("Country exists province doesnt.")
                         country.add_province(province_state)
-                        # print(province)
-                        # province.add_report(date, report)
                         country.add_province_dated_report(province_state, date, Report(confirmed, deaths, recovered, active))
-                        # province_reports = province.get_reports()
-                        # print(province_reports[date])
-                        # print(province_reports[date].get_confirmed())
                     else:
                         # No province provided. Update country reports directly
                         country.add_province_dated_report(province_state, date, Report(confirmed, deaths,
@@ -455,31 +427,6 @@ def process_daily_report_us(path, date, sess):
                     # countries_dict[country_region] = country
                     print("INSERTED")
 
-        # country = sess['countries']['US']
-        # for province in country.province_state:
-        #     prov = country.province_state[province]
-        #     print(province)
-        #     print(hex(id(prov.provincial_reports)))
-        #     print(prov.get_dated_report(date))
-        #     print(prov.get_dated_report(date).get_confirmed())
-            # reports = country.get_province_reports(province)
-            # prov = country.get_province(province)
-            # reports2 = prov.get_report(date)
-            # reports3 = prov.reports[date]
-            # print(reports)
-            # print(reports['01-02-2021'])
-            # print(reports2)
-            # print(reports3)
-            # print(reports['01-02-2021'].get_confirmed())
-            # print(reports2.get_confirmed())
-            # print(reports3.get_confirmed())
-        # provinces = session["countries"]['US'].province_state
-        # for item in provinces:
-        #     print(item)
-        #     prov = provinces[item]
-        #     report = prov.get_reports()[date]
-        #     print(f"confirmed: {report.get_confirmed()}")
-        # return True
     except EnvironmentError:
         print("With statement failed")
         return False
