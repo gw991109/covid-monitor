@@ -237,8 +237,7 @@ def process_global_timeseries(path, category, sess):
                 province_state = line[0]
                 country_region = line[1]
                 print(country_region)
-                # if country_region in sess["countries"]:
-                if country_region in countries_dict:
+                if country_region in sess["countries"]:
                     # Country exists, update reports
                     country = sess["countries"][country_region]
                     if province_state != '' and province_state in country.province_state:
@@ -458,7 +457,6 @@ def process_daily_report_us(path, date, sess):
                                                     recovered, active))
 
                     sess['countries'][country_region] = country
-                    # countries_dict[country_region] = country
     except EnvironmentError:
         print("With statement failed")
         return False
