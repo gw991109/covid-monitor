@@ -1,8 +1,4 @@
-# Assignment 2 Starter Template 
-
-## Getting Started 
-
-These instructions will get a copy of the assignment starter template up and running on your local machine. 
+# Assignment 2 COVIDMonitor
 
 ### Prerequisites
 
@@ -12,6 +8,7 @@ Additionally you will need to install the following packages:
 
 ```bash
 pip install flask
+pip install flask_session
 pip install pytest
 pip install pytest-cov
 ```
@@ -35,6 +32,16 @@ To run unit tests with coverage, run the following command:
 pytest --cov-report term --cov=COVIDMonitor tests/unit_tests.py
 ```
 
-## Assignment Instructions
+## Pair Programming
 
-Assignment instructions can be found here: https://drive.google.com/file/d/1CX_c29slK1TyUvEOiolSzuugnRGCRp8A/view?usp=sharing
+### Features were pair programmed
+- upload page and uploading file feature
+- query page and process the user's query options
+#### upload page
+- Driver: Gerald Wu
+- Navigator: Pao Hua Lin
+- Reflection: 
+#### query page
+- Driver: Gerald Wu
+- Navigator: Pao Hua Lin
+- Reflection: Since is our first time using flask, we spend lot of time to find out how to get and store the informations form user input, 
