@@ -1,0 +1,31 @@
+Pair Programming (13/15 marks):
+The pair-programming process is explained in the Readme file. Some reflections were included in the report.
+It would be better to include more clear commit messages for pair programming. It is a bit hard to tell from commit history which commits were pair-programmed.
+
+
+Program design (15/20 marks)
+The program design is good in general and the report briefly described the general design of the project.
+The report did not mention any design patterns specifically.
+
+
+Functionality (25/25 marks)
+The applications works in general.
+Support output in 3 different formats.
+
+
+Tests (14/20 marks)
+Some unit tests are implemented.
+Getting many errors when running the tests, so can't determine the exact coverage.
+
+
+Code Craftsmanship (7/10 marks)
+Code style looks good in general and some comments were provided for the code.
+Did not mention tools/IDE used in the project.
+
+
+README.md explanation and organization (7/10 marks): 
+The Readme file included some brief instructions on how to run the application (with multiple screenshots).
+
+
+Total: 13 + 15 + 25 + 14 + 7 + 7 = 81
+Final Mark: 15 * 81% = 12.15
